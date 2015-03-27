@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
-	"runtime"
+	_"runtime"
 	"time"
 )
 
@@ -31,6 +31,7 @@ var (
 	buildtime   string
 	buildcommit string
 	debug		bool
+	dnssec		bool
 	
 )
 
@@ -44,6 +45,7 @@ func main() {
 	flag.StringVar(&ssdbip, "c", "10.5.4.59", "The ssdb ip")
 	flag.IntVar(&ssdbport, "p", 8888, "The ssdb port")
 	flag.BoolVar(&debug,"d",false,"debug mode")
+	flag.BoolVar(&dnssec,"sec",false,"dnssec mode")
 	flag.StringVar(&ssdbauth, "a", "", "The ssdb auth password")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
@@ -51,7 +53,8 @@ func main() {
 	flag.Parse()
 	
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
-	runtime.GOMAXPROCS(runtime.NUMCPU())
+	//don't use this,because kernel fd lock is too heavy
+	//runtime.GOMAXPROCS(runtime.NumCPU())
 	config.ip = ssdbip
 	config.port = ssdbport
 	config.auth	= ssdbauth

@@ -9,6 +9,7 @@ type DNSHandler struct {
 	zones *ZoneStore
 }
 
+
 func NewHandler(zones *ZoneStore) *DNSHandler {
 	return &DNSHandler{zones}
 }
@@ -50,25 +51,37 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	m := new(dns.Msg)
 	m.SetReply(req)
-
-	for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
-		m.Answer = append(m.Answer, r)
-	}
-
-	// Add Authority section
-	for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
-		m.Ns = append(m.Ns, r)
-
-		// Resolve Authority if possible and serve as Extra
-		for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
-			m.Extra = append(m.Extra, r)
+	msgcache := GetZoneCache(name,QuestionKey(req.Question[0],dnssec))
+	if len(msgcache) == 0 {
+		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
+			m.Answer = append(m.Answer, r)
 		}
-		for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
-			m.Extra = append(m.Extra, r)
+		// Add Authority section
+		for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
+			m.Ns = append(m.Ns, r)
+		
+			// Resolve Authority if possible and serve as Extra
+			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+				m.Extra = append(m.Extra, r)
+			}
+			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+				m.Extra = append(m.Extra, r)
+			}
+		}
+		SetZoneCache(name,QuestionKey(req.Question[0],dnssec),m.Answer,m.Ns,m.Extra)
+	} else {
+		m.Answer = msgcache[0]
+		if len(msgcache[1]) != 0 {
+			m.Ns = msgcache[1]
+		}
+		if len(msgcache[2]) != 0 {
+			m.Extra = msgcache[2]
 		}
 	}
-
+	
+	
 	m.Authoritative = true
+
 	w.WriteMsg(m)
 }
 
