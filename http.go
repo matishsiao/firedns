@@ -4,7 +4,7 @@ import (
 	"code.google.com/p/go.net/idna"
 	"encoding/json"
 	"fmt"
-	"github.com/miekg/dns"
+	"github.com/matishsiao/dns"
 	"io/ioutil"
 	"log"
 	"net/http"

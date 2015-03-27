@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"github.com/miekg/dns"
 	"log"
 	"os"
 	"os/signal"
@@ -15,66 +14,39 @@ var (
 	zones = &ZoneStore{
 		store: make(map[string]Zone),
 		m:     new(sync.RWMutex),
+		seri:  make(map[string]uint64),
 	}
-	zoneUrl     string
+	config     = &Configs{
+		ip:		"10.5.4.59",
+		port:	8888,
+		auth:	"",
+	}
+	configPath	string
 	listenOn    string
 	recurseTo   string
 	apiKey      string
 	buildtime   string
 	buildcommit string
+	
 )
 
-type ZoneStore struct {
-	store map[string]Zone
-	m     *sync.RWMutex
-}
-
-type Zone map[dns.RR_Header][]dns.RR
-
-func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
-	zs.m.RLock()
-	defer zs.m.RUnlock()
-	var zone *Zone
-	var name string
-	b := make([]byte, len(q)) // worst case, one label of length q
-	off := 0
-	end := false
-	for {
-		l := len(q[off:])
-		for i := 0; i < l; i++ {
-			b[i] = q[off+i]
-			if b[i] >= 'A' && b[i] <= 'Z' {
-				b[i] |= ('a' - 'A')
-			}
-		}
-		if z, ok := zs.store[string(b[:l])]; ok { // 'causes garbage, might want to change the map key
-			if t != dns.TypeDS {
-				return &z, string(b[:l])
-			} else {
-				// Continue for DS to see if we have a parent too, if so delegeate to the parent
-				zone = &z
-				name = string(b[:l])
-			}
-		}
-		off, end = dns.NextLabel(q, off)
-		if end {
-			break
-		}
-	}
-	return zone, name
+type Configs struct {
+	ip			string
+	port		int
+	auth		string
 }
 
 func main() {
-	flag.StringVar(&zoneUrl, "z", "http://localhost/zones.json", "The URL of zones in JSON format")
+	flag.StringVar(&configPath, "c", "conf.json", "The configs in JSON format")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
 	flag.Parse()
-
-	log.Println("godnsagent (2014) by Daniel Speichert is starting...")
-	log.Println("https://github.com/DevelopersPL/godnsagent")
+	
+	log.Println("firedns (2015) by Matis Hsiao is starting...")
 	log.Printf("bult %s from commit %s", buildtime, buildcommit)
-
+	
+	Connect(config.ip,config.port,config.auth)
 	prefetch(zones, true)
 
 	server := &Server{
