@@ -180,11 +180,12 @@ func (zs *ZoneStore) updateZones(tmpmap map[string][]Record) {
 
 
 func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
-	if debug {
+	/*if debug {
 		log.Println("match question:",q,t)
 	}
 	zs.m.RLock()
 	defer zs.m.RUnlock()
+	*/
 	var zone *Zone
 	var name string
 	b := make([]byte, len(q)) // worst case, one label of length q
@@ -198,9 +199,9 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 				b[i] |= ('a' - 'A')
 			}
 		}
-		if debug {
+		/*if debug {
 			log.Println("match:",string(b[:l]))
-		}
+		}*/
 		if z, ok := zs.store[string(b[:l])]; ok { // 'causes garbage, might want to change the map key
 			if t != dns.TypeDS {
 				return &z, string(b[:l])

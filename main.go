@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"sync"
 	"syscall"
+	"runtime"
 	"time"
 )
 
@@ -50,7 +51,7 @@ func main() {
 	flag.Parse()
 	
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
-	
+	runtime.GOMAXPROCS(runtime.NUMCPU())
 	config.ip = ssdbip
 	config.port = ssdbport
 	config.auth	= ssdbauth
