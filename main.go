@@ -21,7 +21,9 @@ var (
 		port:	8888,
 		auth:	"",
 	}
-	configPath	string
+	ssdbip	string
+	ssdbport	int
+	ssdbauth	string
 	listenOn    string
 	recurseTo   string
 	apiKey      string
@@ -37,7 +39,9 @@ type Configs struct {
 }
 
 func main() {
-	flag.StringVar(&configPath, "c", "10.5.4.59", "The configs ip")
+	flag.StringVar(&ssdbip, "c", "10.5.4.59", "The ssdb ip")
+	flag.IntVar(&ssdbport, "p", 8888, "The ssdb port")
+	flag.StringVar(&ssdbauth, "a", "", "The ssdb auth password")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
@@ -45,7 +49,9 @@ func main() {
 	
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
 	log.Printf("bult %s from commit %s", buildtime, buildcommit)
-	config.ip = configPath
+	config.ip = ssdbip
+	config.port = ssdbport
+	config.auth	= ssdbauth
 	Connect(config.ip,config.port,config.auth)
 	prefetch(zones, true)
 
