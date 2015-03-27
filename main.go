@@ -37,7 +37,7 @@ type Configs struct {
 }
 
 func main() {
-	flag.StringVar(&configPath, "c", "conf.json", "The configs in JSON format")
+	flag.StringVar(&configPath, "c", "10.5.4.59", "The configs ip")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
@@ -45,7 +45,7 @@ func main() {
 	
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
 	log.Printf("bult %s from commit %s", buildtime, buildcommit)
-	
+	config.ip = configPath
 	Connect(config.ip,config.port,config.auth)
 	prefetch(zones, true)
 
