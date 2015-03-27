@@ -29,6 +29,7 @@ var (
 	apiKey      string
 	buildtime   string
 	buildcommit string
+	debug		bool
 	
 )
 
@@ -41,6 +42,7 @@ type Configs struct {
 func main() {
 	flag.StringVar(&ssdbip, "c", "10.5.4.59", "The ssdb ip")
 	flag.IntVar(&ssdbport, "p", 8888, "The ssdb port")
+	flag.BoolVar(&debug,"d",false,"debug mode")
 	flag.StringVar(&ssdbauth, "a", "", "The ssdb auth password")
 	flag.StringVar(&listenOn, "l", "", "The IP to listen on (default = blank = ALL)")
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
@@ -48,10 +50,11 @@ func main() {
 	flag.Parse()
 	
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
-	log.Printf("bult %s from commit %s", buildtime, buildcommit)
+	
 	config.ip = ssdbip
 	config.port = ssdbport
 	config.auth	= ssdbauth
+	log.Printf("ssdb ip:%s:%d use auth:%s", config.ip,config.port,config.auth)
 	Connect(config.ip,config.port,config.auth)
 	prefetch(zones, true)
 
