@@ -25,6 +25,7 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		dns.HandleFailed(w, req)
 		return
 	} else {
+		//Proxy
 		if zone, name = h.zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
 			if recurseTo == "" {
 				dns.HandleFailed(w, req)
@@ -51,8 +52,8 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 
 	m := new(dns.Msg)
 	m.SetReply(req)
-	msgcache := GetZoneCache(name,QuestionKey(req.Question[0],dnssec))
-	if len(msgcache) == 0 {
+	msgcache := GetZoneCache(QuestionKey(req.Question[0],dnssec))
+	if msgcache == nil {
 		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
 		}
@@ -68,15 +69,11 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 				m.Extra = append(m.Extra, r)
 			}
 		}
-		SetZoneCache(name,QuestionKey(req.Question[0],dnssec),m.Answer,m.Ns,m.Extra)
+		SetZoneCache(QuestionKey(req.Question[0],dnssec),m)
 	} else {
-		m.Answer = msgcache[0]
-		if len(msgcache[1]) != 0 {
-			m.Ns = msgcache[1]
-		}
-		if len(msgcache[2]) != 0 {
-			m.Extra = msgcache[2]
-		}
+		msgcache.Id = m.Id
+		msgcache.Compress = true
+		
 	}
 	
 	

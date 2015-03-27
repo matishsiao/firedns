@@ -3,10 +3,10 @@ package main
 import (
 	"flag"
 	"log"
-	"os"
-	"os/signal"
+	_"os"
+	_"os/signal"
 	"sync"
-	"syscall"
+	_"syscall"
 	_"runtime"
 	"time"
 )
@@ -72,8 +72,12 @@ func main() {
 
 	server.Run()
 
-	go StartHTTP()
-
+	for {
+		time.Sleep(time.Second)
+		
+	}
+	/*go StartHTTP()
+	
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	for {
@@ -81,5 +85,5 @@ func main() {
 		case s := <-sig:
 			log.Fatalf("Signal (%d) received, stopping\n", s)
 		}
-	}
+	}*/
 }

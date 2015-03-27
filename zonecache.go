@@ -10,42 +10,43 @@ var zonecachestore *ZoneCacheStore
 
 type ZoneCacheStore struct {
 	cache *sync.Mutex
-	zones map[string]ZoneCache
-}
-
-type ZoneCache struct {
 	rcache map[string]Cache
 }
 
+/*type ZoneCache struct {
+	rcache map[string]Cache
+}*/
+
 type Cache struct {
-	Answer []dns.RR
+	Answer *dns.Msg
 	Ns	   []dns.RR
 	Extra  []dns.RR
 	Ttl		int
 }
 
-func GetZoneCache(zone string,question string) ([][]dns.RR) {
+func GetZoneCache(question string) *dns.Msg {
 	if zonecachestore == nil {
-		zonecachestore = &ZoneCacheStore{cache:&sync.Mutex{},zones:make(map[string]ZoneCache)}
+		zonecachestore = &ZoneCacheStore{cache:&sync.Mutex{},rcache:make(map[string]Cache)}
 	}
-	if zonecache,ok := zonecachestore.zones[zone]; ok{
-		if c,ok := zonecache.rcache[question]; ok{
-			return [][]dns.RR{c.Answer,c.Ns,c.Extra}
+	//if zonecache,ok := zonecachestore.zones[zone]; ok{
+		if c,ok := zonecachestore.rcache[question]; ok{
+			//return [][]dns.RR{c.Answer,c.Ns,c.Extra}
+			return c.Answer.Copy()
 		}
-	} 
+	//} 
 	return nil
 }
 
-func SetZoneCache(zone string,question string, ans []dns.RR,ns []dns.RR,extra []dns.RR) {
+func SetZoneCache(question string,msg *dns.Msg) {
 	var cache Cache
-	cache.Answer = ans
-	cache.Ns = ns
-	cache.Extra = extra
+	cache.Answer = msg
+	/*cache.Ns = ns
+	cache.Extra = extra*/
 	cache.Ttl = 300
-	if _,ok := zonecachestore.zones[zone]; !ok{
+	/*if _,ok := zonecachestore.zones[zone]; !ok{
 		zonecachestore.zones[zone] = ZoneCache{rcache:make(map[string]Cache)}
-	}
-	zonecachestore.zones[zone].rcache[question] = cache
+	}*/
+	zonecachestore.rcache[question] = cache
 }
 
 func QuestionKey(q dns.Question, dnssec bool) string {
@@ -60,13 +61,13 @@ func QuestionKey(q dns.Question, dnssec bool) string {
 func (zcs *ZoneCacheStore) CalcTtl() {
 	zcs.cache.Lock()
 	defer zcs.cache.Unlock()
-	for k,zone := range zcs.zones {
-		for zk,_ := range zone.rcache {
+	for k,_ := range zcs.rcache {
+		//for zk,_ := range zone.rcache {
 			//zcs.zones[k].rcache[zk].Ttl = 0
-			if zcs.zones[k].rcache[zk].Ttl < 0 {
-				delete(zcs.zones[k].rcache,zk)
+			if zcs.rcache[k].Ttl < 0 {
+				delete(zcs.rcache,k)
 			}
-		}
+		//}
 	}
 }
 
