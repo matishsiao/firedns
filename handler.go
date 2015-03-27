@@ -18,8 +18,8 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	// BIND does not support answering multiple questions so we won't
 	var zone *Zone
 	var name string
-	h.zones.m.RLock()
-	defer h.zones.m.RUnlock()
+	//h.zones.m.RLock()
+	//defer h.zones.m.RUnlock()
 
 	if len(req.Question) != 1 {
 		dns.HandleFailed(w, req)
@@ -42,7 +42,7 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 					w.WriteMsg(in)
 					return
 				} else {
-					log.Printf("Recursive error: %+v\n", err)
+					log.Printf("Recursive error: %+v %s\n", err,name)
 					dns.HandleFailed(w, req)
 					return
 				}
