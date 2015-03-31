@@ -14,8 +14,8 @@ parses them, stores them in memory and serves to clients.
 
 Benchmark
 ============
-using Intel(R) Xeon(R) CPU E5-2660 v2 @ 2.20GHz and run 19 process for service udp query
-Query Per Second:535000
+* using Intel(R) Xeon(R) CPU E5-2660 v2 @ 2.20GHz and run 19 process for service udp query
+* Query Per Second:535000
 
 How to build
 ============
