@@ -93,9 +93,9 @@ func (zs *ZoneStore) lookup() {
 		return
 	}
 	
-	for k,v := range zones {
+	/*for k,v := range zones {
 		log.Printf("ssdb zones ser number[%s]:%v\n",k,v)
-	}
+	}*/
 	
 	var updatelist []string
 	if len(zs.seri) == 0 {
@@ -122,7 +122,7 @@ func (zs *ZoneStore) lookup() {
 				//new zone update it
 				updatelist = append(updatelist,k)
 			}
-			log.Printf("zones ser number[%s]:%v now:%d\n",k,v,zs.seri[k])
+			//log.Printf("zones ser number[%s]:%v now:%d\n",k,v,zs.seri[k])
 		}
 	}
 	

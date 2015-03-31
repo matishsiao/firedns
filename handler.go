@@ -2,7 +2,8 @@ package main
 
 import (
 	"github.com/matishsiao/dns"
-	"log"
+	_"log"
+	_"net"
 )
 
 type DNSHandler struct {
@@ -11,17 +12,16 @@ type DNSHandler struct {
 
 
 func NewHandler(zones *ZoneStore) *DNSHandler {
-	return &DNSHandler{zones}
+	return &DNSHandler{zones:zones}
 }
 
 func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	// BIND does not support answering multiple questions so we won't
-	var zone *Zone
-	var name string
+	
 	//h.zones.m.RLock()
 	//defer h.zones.m.RUnlock()
-
-	if len(req.Question) != 1 {
+	counter.Total_counter++
+	/*if len(req.Question) != 1 {
 		dns.HandleFailed(w, req)
 		return
 	} else {
@@ -48,17 +48,60 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 				}
 			}
 		}
-	}
+	}*/
 
 	m := new(dns.Msg)
 	m.SetReply(req)
+	m.Authoritative = true
+	m.RecursionAvailable = true
+	m.Compress = true
+	bufsize := uint16(512)
+	dnssec := false
+	//tcp := false
+
+	if req.Question[0].Qtype == dns.TypeANY {
+		m.Authoritative = false
+		m.Rcode = dns.RcodeRefused
+		m.RecursionAvailable = false
+		m.RecursionDesired = false
+		m.Compress = false
+		// if write fails don't care
+		w.WriteMsg(m)
+		return
+	}
+
+	if o := req.IsEdns0(); o != nil {
+		bufsize = o.UDPSize()
+		dnssec = o.Do()
+	}
+	if bufsize < 512 {
+		bufsize = 512
+	}
+	// with TCP we can send 64K
+	/*if _, ok := w.RemoteAddr().(*net.TCPAddr); ok {
+		bufsize = dns.MaxMsgSize - 1
+		tcp = true
+	}*/
 	msgcache := GetZoneCache(QuestionKey(req.Question[0],dnssec))
 	if msgcache == nil {
+		//log.Println("name:",req.Question[0].Name)
+		var zone *Zone
+		//var name string
+		if zone, _ = h.zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
+			m.Authoritative = false
+			m.Rcode = dns.RcodeRefused
+			m.RecursionAvailable = false
+			m.RecursionDesired = false
+			m.Compress = false
+			// if write fails don't care
+			w.WriteMsg(m)
+			return
+		}
 		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
 		}
 		// Add Authority section
-		for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
+		/*for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
 			m.Ns = append(m.Ns, r)
 		
 			// Resolve Authority if possible and serve as Extra
@@ -68,18 +111,16 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
 				m.Extra = append(m.Extra, r)
 			}
-		}
+		}*/
 		SetZoneCache(QuestionKey(req.Question[0],dnssec),m)
+		counter.Misscache_counter++
+		w.WriteMsg(m)
 	} else {
+		counter.Cache_counter++
 		msgcache.Id = m.Id
-		msgcache.Compress = true
-		
+		w.WriteMsg(msgcache)
 	}
 	
-	
-	m.Authoritative = true
-
-	w.WriteMsg(m)
 }
 
 func (h *DNSHandler) DoTCP(w dns.ResponseWriter, req *dns.Msg) {

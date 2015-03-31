@@ -4,13 +4,16 @@ import (
 	"github.com/matishsiao/dns"
 	"sync"
 	"crypto/sha1"
+	_"log"
 )
 
 var zonecachestore *ZoneCacheStore
 
 type ZoneCacheStore struct {
-	cache *sync.Mutex
-	rcache map[string]Cache
+	cache *sync.RWMutex
+	//rcache []Cache
+	rcache map[string]*Cache
+	size int
 }
 
 /*type ZoneCache struct {
@@ -18,35 +21,27 @@ type ZoneCacheStore struct {
 }*/
 
 type Cache struct {
+	Key	   string
 	Answer *dns.Msg
-	Ns	   []dns.RR
-	Extra  []dns.RR
-	Ttl		int
+	Ttl		int64
 }
 
 func GetZoneCache(question string) *dns.Msg {
 	if zonecachestore == nil {
-		zonecachestore = &ZoneCacheStore{cache:&sync.Mutex{},rcache:make(map[string]Cache)}
+		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make([]Cache,1000)}
+		zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make(map[string]*Cache)}
+		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{}}
 	}
-	//if zonecache,ok := zonecachestore.zones[zone]; ok{
-		if c,ok := zonecachestore.rcache[question]; ok{
-			//return [][]dns.RR{c.Answer,c.Ns,c.Extra}
-			return c.Answer.Copy()
-		}
-	//} 
+	if v,ok := zonecachestore.rcache[question];ok{
+		return v.Answer.Copy()
+	}
 	return nil
 }
 
 func SetZoneCache(question string,msg *dns.Msg) {
-	var cache Cache
-	cache.Answer = msg
-	/*cache.Ns = ns
-	cache.Extra = extra*/
-	cache.Ttl = 300
-	/*if _,ok := zonecachestore.zones[zone]; !ok{
-		zonecachestore.zones[zone] = ZoneCache{rcache:make(map[string]Cache)}
-	}*/
+	cache := &Cache{Answer:msg,Ttl:300}
 	zonecachestore.rcache[question] = cache
+	zonecachestore.size++
 }
 
 func QuestionKey(q dns.Question, dnssec bool) string {
@@ -61,11 +56,12 @@ func QuestionKey(q dns.Question, dnssec bool) string {
 func (zcs *ZoneCacheStore) CalcTtl() {
 	zcs.cache.Lock()
 	defer zcs.cache.Unlock()
-	for k,_ := range zcs.rcache {
+	for k,v := range zcs.rcache {
 		//for zk,_ := range zone.rcache {
 			//zcs.zones[k].rcache[zk].Ttl = 0
-			if zcs.rcache[k].Ttl < 0 {
+			if v.Ttl < 0 {
 				delete(zcs.rcache,k)
+				//zcs.rcache = zcs.rcache[k:]
 			}
 		//}
 	}

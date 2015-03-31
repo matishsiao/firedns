@@ -28,10 +28,11 @@ var (
 	listenOn    string
 	recurseTo   string
 	apiKey      string
-	buildtime   string
+	version   string
 	buildcommit string
 	debug_mode		bool
 	dnssec		bool
+	counter *Counter
 	
 )
 
@@ -51,13 +52,15 @@ func main() {
 	flag.StringVar(&recurseTo, "r", "", "Pass-through requests that we can't answer to other DNS server (address:port or empty=disabled)")
 	flag.StringVar(&apiKey, "k", "", "API key for http notifications")
 	flag.Parse()
-	
+	version = "0.0.1"
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
+	log.Println("firedns version:",version)
 	//don't use this,because kernel fd lock is too heavy
 	//runtime.GOMAXPROCS(runtime.NumCPU())
 	config.ip = ssdbip
 	config.port = ssdbport
 	config.auth	= ssdbauth
+	counter = &Counter{mu:&sync.Mutex{}}
 	SetUlimit(100000)
 	log.Printf("ssdb ip:%s:%d use auth:%s", config.ip,config.port,config.auth)
 	Connect(config.ip,config.port,config.auth)
@@ -72,12 +75,14 @@ func main() {
 	}
 	//StartCPUProfile()
 	server.Run()
-	//counter := 0
+	intval := 0
 	for {
-		/*counter++
-		if counter == 120 {
-			StopCPUProfile()
-		}*/
+		intval++
+		if intval == 60 {
+			agg := counter.Aggregate()
+			log.Printf("Process:Total:%d Cache:%d Miss:%d \n",agg[0],agg[1],agg[2])
+			intval = 0
+		}
 		
 		time.Sleep(time.Second)
 		

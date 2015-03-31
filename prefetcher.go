@@ -6,7 +6,6 @@ import (
 	"github.com/matishsiao/dns"
 	"io/ioutil"
 	"log"
-	"fmt"
 	"os"
 	_ "net/http"
 )
@@ -26,8 +25,6 @@ func (r *Record) Dump() {
 
 func prefetch(zs *ZoneStore, critical bool) {
 	tmpmap := GetZones()
-	log.Println(tmpmap)
-
 	zs.m.Lock()
 	zs.store = make(map[string]Zone)
 	for key, value := range tmpmap {
@@ -43,7 +40,6 @@ func prefetch(zs *ZoneStore, critical bool) {
 				r.Name = cdn
 			}
 			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
-			fmt.Println(rr)
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
 				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
@@ -63,7 +59,7 @@ func localPrefetch(zs *ZoneStore, critical bool) {
 	fileName := "zone.json"
 	body, e := ioutil.ReadFile(fileName)
 	if e != nil {
-		fmt.Printf("loadDDESymbolConfigs file:%s error:%v\n",fileName, e)
+		log.Printf("loadDDESymbolConfigs file:%s error:%v\n",fileName, e)
 		os.Exit(1)	
 	}
 
@@ -90,7 +86,6 @@ func localPrefetch(zs *ZoneStore, critical bool) {
 				r.Name = cdn
 			}
 			rr, err := dns.NewRR(dns.Fqdn(r.Name) + " " + r.Class + " " + r.Type + " " + r.Data)
-			fmt.Println(rr)
 			if err == nil {
 				rr.Header().Ttl = r.Ttl
 				key2 := dns.RR_Header{Name: dns.Fqdn(rr.Header().Name), Rrtype: rr.Header().Rrtype, Class: rr.Header().Class}
