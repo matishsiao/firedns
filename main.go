@@ -7,7 +7,7 @@ import (
 	_"os/signal"
 	"sync"
 	_"syscall"
-	_"runtime"
+	"runtime"
 	"time"
 )
 
@@ -56,7 +56,7 @@ func main() {
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
 	log.Println("firedns version:",version)
 	//don't use this,because kernel fd lock is too heavy
-	//runtime.GOMAXPROCS(runtime.NumCPU())
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	config.ip = ssdbip
 	config.port = ssdbport
 	config.auth	= ssdbauth
@@ -64,7 +64,7 @@ func main() {
 	SetUlimit(100000)
 	log.Printf("ssdb ip:%s:%d use auth:%s", config.ip,config.port,config.auth)
 	Connect(config.ip,config.port,config.auth)
-	prefetch(zones, true)
+	//prefetch(zones, true)
 
 	server := &Server{
 		host:     listenOn,

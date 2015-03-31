@@ -48,36 +48,43 @@ func GetZones() map[string][]Record {
 	maps := make(map[string][]Record)
 	for k,v := range zones {
 		var zone []Record
-		log.Println("zone:",v)
 		zonestr := v.(string)
 		err := json.Unmarshal([]byte(zonestr), &zone)
 		if err != nil {
-			log.Fatal("Error parsing JSON zones file: ", err, v)
-		} else if err != nil {
-			log.Println("Error parsing JSON zones file: ", err)
-		}
+			log.Println("Error parsing JSON zones file: ", err, v)
+			continue
+		} 
 		
-		for k,zv := range zone {
-			/*var record Record
-			err := json.Unmarshal([]byte(zv), &record)
-			if err != nil {
-				log.Println("Error parsing JSON zones json record: ", err, zv)
-			} */
-			log.Println("zone info:",k)
-			zv.Dump()
-			//zone[k] = zv
-		}
-		log.Println(zone)
 		maps[k] = zone
 	}
-	log.Println("GetZones:",maps)
 	return maps
+}
+
+func (zs *ZoneStore) GetZone(zonename string) bool {
+	log.Println("GetZone:",zonename)
+	newzone,err := db.HashGet("zones",zonename)
+	if err != nil || newzone == nil {
+		log.Println("Error get zones file from GetZone: ", err)
+		return false
+	}
+	maps := make(map[string][]Record)
+	var zone []Record
+	zonestr := newzone.(string)
+	err = json.Unmarshal([]byte(zonestr), &zone)
+	if err != nil {
+		log.Println("Error parsing JSON zones: ", err, newzone)
+		return false
+	}
+	maps[zonename] = zone
+	log.Println("zones records:",len(maps))
+	zs.updateZones(maps)
+	return true
 }
 
 func (zs *ZoneStore) Lookup() {
 	for {
 		go zs.lookup()
-		time.Sleep(15 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 }
 
@@ -120,6 +127,7 @@ func (zs *ZoneStore) lookup() {
 				zs.seri[k] = i
 			} else {
 				//new zone update it
+				zs.seri[k] = i
 				updatelist = append(updatelist,k)
 			}
 			//log.Printf("zones ser number[%s]:%v now:%d\n",k,v,zs.seri[k])
@@ -209,6 +217,18 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 				// Continue for DS to see if we have a parent too, if so delegeate to the parent
 				zone = &z
 				name = string(b[:l])
+			}
+		} else {
+			if zs.GetZone(string(b[:l])) {
+				if z, ok := zs.store[string(b[:l])]; ok { // 'causes garbage, might want to change the map key
+					if t != dns.TypeDS {
+						return &z, string(b[:l])
+					} else {
+						// Continue for DS to see if we have a parent too, if so delegeate to the parent
+						zone = &z
+						name = string(b[:l])
+					}
+				}
 			}
 		}
 		off, end = dns.NextLabel(q, off)
