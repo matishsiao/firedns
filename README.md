@@ -1,9 +1,9 @@
-godnsagent
+firedns
 ============
-godnsagent is a simple DNS server which downloads zones over HTTP(S) in JSON format,
+firedns is a simple DNS server which downloads zones over SSDB in JSON format,
 parses them, stores them in memory and serves to clients.
 
-* godnsagent listens on both TCP and UDP port 53.
+* firedns listens on both TCP and UDP port 53.
 * It does not support daemonization.
 * There is no config file.
 * There is no reading from local zone files.
@@ -12,39 +12,40 @@ parses them, stores them in memory and serves to clients.
 * Uses many threads to handle connections (by Go goroutines).
 * Exits gracefully on SIGINT or SIGTERM.
 
+Benchmark
+============
+using Intel(R) Xeon(R) CPU E5-2660 v2 @ 2.20GHz and run 19 process for service udp query
+Query Per Second:535000
+
 How to build
 ============
 ```bash
-go get github.com/miekg/dns
-git clone https://github.com/DevelopersPL/godnsagent.git
-cd godnsagent
-go build -ldflags "-X main.buildtime '`date`' -X main.buildcommit '`git log --pretty=format:'%h' -n 1`'"
+go get github.com/matishsiao/firedns
+cd GOPATH/github.com/matishsiao/firedns
+go build
 ```
 
 How to run
 ============
-* Parameter ```-z``` defines address of DNS zones. Defaults to http://localhost/zones.json
+* Parameter ```-c``` defines address of SSDB server. Defaults to 127.0.0.1
+* Parameter ```-p``` defines port of SSDB server. Defaults to 8888
+* Parameter ```-a``` defines port of SSDB auth password. Defaults to ""
+* Parameter ```-d``` defines debug mode. Defaults to false
 * Parameter ```-l``` defines the local IP (interface) to listen on. Defaults to all.
 * Parameter ```-r``` enable recursive querying of specified servers for answers godnsagent can't provide itself.
 * Parameter ```-k``` sets the API key (passed as GET or form value "key" to http notification handlers)
 
 ```
-./godnsagent -z https://example.org/path/to/zones.json -l 127.0.0.1 -r 8.8.8.8:53 -k secretkeyhere
+./firedns -c 127.0.0.1 -p 8888
 ```
 
 How it works
 ============
-* Once you start the program, it will try to download the zones JSON document.
-* If the download fails, the program will fail (exit with error code).
 * It binds to ports 53 on TCP and UDP and serves queries.
 * The longest matching zone is chosen.
-* Answers are marked as authoritative.
 * All NS records on the zone are returned with an answer as "Authoritative" section.
 * If possible, resolutions for NS records are added as "Extra" section.
-* An HTTP GET request to :5380/notify invokes a reload of zones (the reload fails gracefully)
-* HTTP requests require valid key passed as a GET parameter if such a key is defined
-* An HTTP POST request to :5380/notify/zones processes JSON body of request as zones (zones are merged with cache but contents are replaced)
-* If recursive querying is enabled, the question will be forwarded to the specified server
+* If zone file not exist in memory. It will try connect SSDB server to get zone json. If fail it will refused.
 
 Schema of zones file
 ============
@@ -84,4 +85,5 @@ Acknowledgments
 ============
 This software was created thanks to two amazing projects:
   * https://github.com/miekg/dns: DNS library by miekg provided awesome foundations of DNS in Go.
+  * https://github.com/DevelopersPL/godnsagent: DNS agent by DevelopersPL provided a great example and reference point for using it.
   * https://github.com/kenshinx/godns: Kenshinx's goDNS provided a great example and reference point for using it.
