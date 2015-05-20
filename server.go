@@ -20,6 +20,7 @@ func (s *Server) Addr() string {
 }
 
 func (s *Server) Run() {
+	//StartCPUProfile("do")
 	Handler := NewHandler(s.zones)
 
 	tcpHandler := dns.NewServeMux()
@@ -51,4 +52,5 @@ func (s *Server) start(ds *dns.Server) {
 	if err != nil {
 		log.Fatalf("Start %s listener on %s failed:%s", ds.Net, s.Addr(), err.Error())
 	}
+	
 }

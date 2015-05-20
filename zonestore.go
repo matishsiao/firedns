@@ -8,12 +8,14 @@ import (
 	"code.google.com/p/go.net/idna"
 	"encoding/json"
 	"strconv"
+	_"strings"
 	"time"
 )
 
 type ZoneStore struct {
 	store map[string]Zone
 	seri  map[string]uint64
+	zones map[string]string
 	m     *sync.RWMutex
 }
 
@@ -64,7 +66,7 @@ func (zs *ZoneStore) GetZone(zonename string) bool {
 	log.Println("GetZone:",zonename)
 	newzone,err := db.HashGet("zones",zonename)
 	if err != nil || newzone == nil {
-		log.Println("Error get zones file from GetZone: ", err)
+		//log.Println("Error get zones file from GetZone: ", err)
 		return false
 	}
 	maps := make(map[string][]Record)
@@ -79,6 +81,31 @@ func (zs *ZoneStore) GetZone(zonename string) bool {
 	log.Println("zones records:",len(maps))
 	zs.updateZones(maps)
 	return true
+}
+
+func (zs *ZoneStore) GetZoneList() {
+	log.Println("GetZoneList:")
+	size,err := db.HashSize("zones")
+	if err != nil {
+		return 
+	}
+	keys,err := db.HashKeys("zones","","",size.(int64))
+	if err != nil || keys == nil {
+		//log.Println("Error get zones file from GetZone: ", err)
+		return
+	}
+	log.Println(keys)
+	for _,v := range keys.([]string) {
+		zs.zones[v] = v
+	}
+	log.Println("zs.zones:",zs.zones)
+}
+
+func (zs *ZoneStore) CheckZone(zone string) bool {
+	if _,ok := zs.zones[zone];ok{
+		return true
+	}
+	return false
 }
 
 func (zs *ZoneStore) Lookup() {
@@ -115,21 +142,22 @@ func (zs *ZoneStore) lookup() {
 		}
 	} else {
 		for k,v := range zones {
+			i,err := strconv.ParseUint(v.(string),10,64)
+			if err != nil {
+				i = 0
+			}
 			if zv,ok := zs.seri[k]; ok{
 				//if serial number less current number then update it
-				i,err := strconv.ParseUint(v.(string),10,64)
-				if err != nil {
-					i = 0
-				}
+				
 				if zv < i {
 					updatelist = append(updatelist,k)
 				}
-				zs.seri[k] = i
+				
 			} else {
 				//new zone update it
-				zs.seri[k] = i
 				updatelist = append(updatelist,k)
 			}
+			zs.seri[k] = i
 			//log.Printf("zones ser number[%s]:%v now:%d\n",k,v,zs.seri[k])
 		}
 	}
@@ -207,34 +235,60 @@ func (zs *ZoneStore) match(q string, t uint16) (*Zone, string) {
 				b[i] |= ('a' - 'A')
 			}
 		}
+		
 		/*if debug {
 			log.Println("match:",string(b[:l]))
 		}*/
-		if z, ok := zs.store[string(b[:l])]; ok { // 'causes garbage, might want to change the map key
+		label := string(b[:l])
+		//log.Println("label:",label)
+		if z, ok := zs.store[label]; ok { // 'causes garbage, might want to change the map key
+			//log.Println("find zone:",label)
 			if t != dns.TypeDS {
-				return &z, string(b[:l])
+				return &z, label
 			} else {
 				// Continue for DS to see if we have a parent too, if so delegeate to the parent
 				zone = &z
-				name = string(b[:l])
+				name = label
 			}
 		} else {
-			if zs.GetZone(string(b[:l])) {
-				if z, ok := zs.store[string(b[:l])]; ok { // 'causes garbage, might want to change the map key
+			if zs.CheckZone(label) {
+				if zs.GetZone(label) {
+					if z, ok := zs.store[label]; ok { // 'causes garbage, might want to change the map key
+						//log.Println("find zone:",label)
+						if t != dns.TypeDS {
+							return &z, label
+						} else {
+							// Continue for DS to see if we have a parent too, if so delegeate to the parent
+							zone = &z
+							name = label
+						}
+					}
+				}	
+			}
+		}	 /*else if !GetNZoneCache(name) {
+			if zs.GetZone(name) {
+				if z, ok := zs.store[name]; ok { // 'causes garbage, might want to change the map key
 					if t != dns.TypeDS {
-						return &z, string(b[:l])
+						return &z, name
 					} else {
 						// Continue for DS to see if we have a parent too, if so delegeate to the parent
 						zone = &z
-						name = string(b[:l])
+						name = name
 					}
 				}
+			} else {
+				SetNZoneCache(name)
+				return nil, name
 			}
-		}
+		}*/
 		off, end = dns.NextLabel(q, off)
 		if end {
 			break
 		}
 	}
 	return zone, name
+}
+
+func (zs *ZoneStore) IsNCache(q string) (bool) {
+	return false
 }

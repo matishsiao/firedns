@@ -4,6 +4,7 @@ import (
 	"github.com/matishsiao/dns"
 	_"log"
 	_"net"
+	"strings"
 )
 
 type DNSHandler struct {
@@ -14,13 +15,16 @@ type DNSHandler struct {
 func NewHandler(zones *ZoneStore) *DNSHandler {
 	return &DNSHandler{zones:zones}
 }
-
+var pprofrun bool = false
 func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 	// BIND does not support answering multiple questions so we won't
 	
 	//h.zones.m.RLock()
 	//defer h.zones.m.RUnlock()
 	counter.Total_counter++
+	/*if counter.Total_counter == 10000 {
+		StopCPUProfile()
+	}*/
 	/*if len(req.Question) != 1 {
 		dns.HandleFailed(w, req)
 		return
@@ -82,12 +86,13 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		bufsize = dns.MaxMsgSize - 1
 		tcp = true
 	}*/
+	req.Question[0].Name = strings.ToLower(req.Question[0].Name)
 	msgcache := GetZoneCache(QuestionKey(req.Question[0],dnssec))
 	if msgcache == nil {
 		//log.Println("name:",req.Question[0].Name)
 		var zone *Zone
-		//var name string
-		if zone, _ = h.zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
+		var name string
+		if zone, name = h.zones.match(req.Question[0].Name, req.Question[0].Qtype); zone == nil {
 			m.Authoritative = false
 			m.Rcode = dns.RcodeRefused
 			m.RecursionAvailable = false
@@ -100,18 +105,20 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		for _, r := range (*zone)[dns.RR_Header{Name: req.Question[0].Name, Rrtype: req.Question[0].Qtype, Class: req.Question[0].Qclass}] {
 			m.Answer = append(m.Answer, r)
 		}
-		// Add Authority section
-		/*for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
-			m.Ns = append(m.Ns, r)
-		
-			// Resolve Authority if possible and serve as Extra
-			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
-				m.Extra = append(m.Extra, r)
+		// Add Authority section for NS only
+		//if req.Question[0].Qtype == dns.TypeNS {
+			for _, r := range (*zone)[dns.RR_Header{Name: name, Rrtype: dns.TypeNS, Class: dns.ClassINET}] {
+				m.Ns = append(m.Ns, r)
+			
+				// Resolve Authority if possible and serve as Extra
+				for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeA, Class: dns.ClassINET}] {
+					m.Extra = append(m.Extra, r)
+				}
+				for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
+					m.Extra = append(m.Extra, r)
+				}
 			}
-			for _, r := range (*zone)[dns.RR_Header{Name: r.(*dns.NS).Ns, Rrtype: dns.TypeAAAA, Class: dns.ClassINET}] {
-				m.Extra = append(m.Extra, r)
-			}
-		}*/
+		//}
 		SetZoneCache(QuestionKey(req.Question[0],dnssec),m)
 		counter.Misscache_counter++
 		w.WriteMsg(m)
@@ -120,6 +127,8 @@ func (h *DNSHandler) do(Net string, w dns.ResponseWriter, req *dns.Msg) {
 		msgcache.Id = m.Id
 		w.WriteMsg(msgcache)
 	}
+	
+	
 	
 }
 

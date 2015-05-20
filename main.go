@@ -16,6 +16,7 @@ var (
 		store: make(map[string]Zone),
 		m:     new(sync.RWMutex),
 		seri:  make(map[string]uint64),
+		zones: make(map[string]string),
 	}
 	config     = &Configs{
 		ip:		"10.5.4.59",
@@ -33,6 +34,7 @@ var (
 	debug_mode		bool
 	dnssec		bool
 	counter *Counter
+	pprofflag bool
 	
 )
 
@@ -56,7 +58,8 @@ func main() {
 	log.Println("firedns (2015) by Matis Hsiao is starting...")
 	log.Println("firedns version:",version)
 	//don't use this,because kernel fd lock is too heavy
-	runtime.GOMAXPROCS(runtime.NumCPU())
+	//runtime.GOMAXPROCS(runtime.NumCPU())
+	
 	config.ip = ssdbip
 	config.port = ssdbport
 	config.auth	= ssdbauth
@@ -64,6 +67,7 @@ func main() {
 	SetUlimit(100000)
 	log.Printf("ssdb ip:%s:%d use auth:%s", config.ip,config.port,config.auth)
 	Connect(config.ip,config.port,config.auth)
+	zones.GetZoneList()
 	//prefetch(zones, true)
 
 	server := &Server{
@@ -73,27 +77,30 @@ func main() {
 		wTimeout: 5 * time.Second,
 		zones:    zones,
 	}
-	//StartCPUProfile()
+	
+	runtime.LockOSThread()
+	
 	server.Run()
 	intval := 0
+	
 	for {
 		intval++
 		if intval == 60 {
 			agg := counter.Aggregate()
 			log.Printf("Process:Total:%d Cache:%d Miss:%d \n",agg[0],agg[1],agg[2])
-			intval = 0
+			intval = 0	
 		}
-		
 		time.Sleep(time.Second)
-		
 	}
-	/*go StartHTTP()
 	
+	//go StartHTTP()
+	/*
 	sig := make(chan os.Signal)
 	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
 	for {
 		select {
 		case s := <-sig:
+			PrintGCSummary() 
 			log.Fatalf("Signal (%d) received, stopping\n", s)
 		}
 	}*/

@@ -4,6 +4,7 @@ import (
 	"github.com/matishsiao/dns"
 	"sync"
 	"crypto/sha1"
+	_"strings"
 	_"log"
 )
 
@@ -11,7 +12,7 @@ var zonecachestore *ZoneCacheStore
 
 type ZoneCacheStore struct {
 	cache *sync.RWMutex
-	//rcache []Cache
+	ncache map[string]int
 	rcache map[string]*Cache
 	size int
 }
@@ -29,7 +30,7 @@ type Cache struct {
 func GetZoneCache(question string) *dns.Msg {
 	if zonecachestore == nil {
 		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make([]Cache,1000)}
-		zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make(map[string]*Cache)}
+		zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make(map[string]*Cache),ncache:make(map[string]int)}
 		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{}}
 	}
 	if v,ok := zonecachestore.rcache[question];ok{
@@ -42,6 +43,28 @@ func SetZoneCache(question string,msg *dns.Msg) {
 	cache := &Cache{Answer:msg,Ttl:300}
 	zonecachestore.rcache[question] = cache
 	zonecachestore.size++
+}
+
+func GetNZoneCache(zone string) bool {
+	if zonecachestore == nil {
+		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make([]Cache,1000)}
+		zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make(map[string]*Cache),ncache:make(map[string]int)}
+		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{}}
+	}
+	if _,ok := zonecachestore.ncache[zone];ok{
+		zonecachestore.ncache[zone]++
+		return true
+	}
+	return false
+}
+
+func SetNZoneCache(zone string) {
+	if zonecachestore == nil {
+		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make([]Cache,1000)}
+		zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{},rcache:make(map[string]*Cache),ncache:make(map[string]int)}
+		//zonecachestore = &ZoneCacheStore{cache:&sync.RWMutex{}}
+	}
+	zonecachestore.ncache[zone] = 1
 }
 
 func QuestionKey(q dns.Question, dnssec bool) string {

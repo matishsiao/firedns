@@ -41,12 +41,20 @@ func init() {
 	pid = os.Getpid()
 }
 
-func StartCPUProfile() {
-	f, err := os.Create("cpu-" + strconv.Itoa(pid) + ".pprof")
-	if err != nil {
-		log.Fatal(err)
+func StartCPUProfile(name ...string) {
+	if len(name) == 0 {
+		f, err := os.Create("cpu-" + strconv.Itoa(pid) + ".pprof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+	} else {
+		f, err := os.Create("cpu-" + name[0] + ".pprof")
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
 	}
-	pprof.StartCPUProfile(f)
 }
 
 func StopCPUProfile() {
