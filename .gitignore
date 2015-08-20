@@ -1,2 +1,14 @@
 sftp-config.json
 deployment-config.json
+cpu-57046.pprof
+cpu-57074.pprof
+cpu-57214.pprof
+cpu-57341.pprof
+cpu-57450.pprof
+cpu-57602.pprof
+cpu-do.pprof
+dev
+firedns
+godnsagent
+hkjump
+stg
